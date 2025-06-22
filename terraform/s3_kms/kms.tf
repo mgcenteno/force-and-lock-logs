@@ -2,7 +2,7 @@
 # Creation of a KMS Key used to perform encrypt/decrypt operations on Primary AWS Region #
 #----------------------------------------------------------------------------------------#
 
-resource "aws_kms_key" "force_and_lock_logs" {
+resource "aws_kms_key" "force_and_lock_logs_primary" {
   provider = aws.primary
   description             = var.kms_description
   deletion_window_in_days = var.deletion_window_in_days
@@ -62,10 +62,10 @@ resource "aws_kms_key" "force_and_lock_logs" {
   })
 }
 
-resource "aws_kms_alias" "force_and_lock_logs" {
+resource "aws_kms_alias" "force_and_lock_logs_primary" {
   provider = aws.primary
   name          = "alias/kmskey-force-and-lock-logs-${data.aws_region.current.name}-${var.organization}"
-  target_key_id = aws_kms_key.force_and_lock_logs.id
+  target_key_id = aws_kms_key.force_and_lock_logs_primary.id
 }
 
 
@@ -73,7 +73,7 @@ resource "aws_kms_alias" "force_and_lock_logs" {
 # Creation of a KMS Key used to perform encrypt/decrypt operations on Secondary AWS Region #
 #------------------------------------------------------------------------------------------#
 
-resource "aws_kms_key" "force_and_lock_logs" {
+resource "aws_kms_key" "force_and_lock_logs_secondary" {
   provider = aws.secondary
   description             = var.kms_description
   deletion_window_in_days = var.deletion_window_in_days
@@ -133,8 +133,8 @@ resource "aws_kms_key" "force_and_lock_logs" {
   })
 }
 
-resource "aws_kms_alias" "force_and_lock_logs" {
+resource "aws_kms_alias" "force_and_lock_logs_secondary" {
   provider = aws.secondary
   name          = "alias/kmskey-force-and-lock-logs-${data.aws_region.current.name}-${var.organization}"
-  target_key_id = aws_kms_key.force_and_lock_logs.id
+  target_key_id = aws_kms_key.force_and_lock_logs_secondary.id
 }
