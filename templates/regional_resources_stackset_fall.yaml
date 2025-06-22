@@ -137,7 +137,7 @@ Resources:
           - Sid: Allow VPC Flow Logs and Lambda to use the key
             Effect: Allow
             Principal:
-              Service: ['lambda.amazonaws.com', 'vpc-flow-logs.amazonaws.com', 'logs.amazonaws.com']
+              Service: ['vpc-flow-logs.amazonaws.com', 'logs.amazonaws.com']
             Action:
               - "kms:DescribeKey"
               - "kms:Encrypt"
@@ -145,6 +145,12 @@ Resources:
               - "kms:ReEncrypt*"
               - "kms:GenerateDataKey"
               - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+          - Sid: Enable IAM Role of Lambda
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-vpc-flow-logs
+            Action: 'kms:*'
             Resource: '*'
   KMSVPCFlowLogsAlias:
     Type: 'AWS::KMS::Alias'
@@ -239,7 +245,7 @@ Resources:
           - Sid: Allow Log Delivery Group and Lambda to use the key
             Effect: Allow
             Principal:
-              Service: ['lambda.amazonaws.com', 'delivery.logs.amazonaws.com']
+              Service: ['delivery.logs.amazonaws.com']
             Action:
               - "kms:DescribeKey"
               - "kms:Encrypt"
@@ -247,6 +253,12 @@ Resources:
               - "kms:ReEncrypt*"
               - "kms:GenerateDataKey"
               - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+          - Sid: Enable IAM Role of Lambda
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-elb-access-logs
+            Action: 'kms:*'
             Resource: '*'
   KMSEnableELBLogsAlias:
     Type: 'AWS::KMS::Alias'
@@ -466,6 +478,12 @@ Resources:
               - "kms:ReEncrypt*"
               - "kms:GenerateDataKey"
               - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+          - Sid: Enable IAM Role of Lambda
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-s3-access-logging
+            Action: 'kms:*'
             Resource: '*'
   KMSS3AccessLogsAlias:
     Type: 'AWS::KMS::Alias'
