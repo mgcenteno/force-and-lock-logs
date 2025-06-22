@@ -5,7 +5,7 @@ Parameters:
   Organization:
     Description: AWS Organization Name used as part of the Bucket Name where Lambda get the .Zip files
     Type: String
-    Default: test
+    Default: mcenteno
 
   Webhook:
     Description: Webhook where the FALL Notifications will be send it
