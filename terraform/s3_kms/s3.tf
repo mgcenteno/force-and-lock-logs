@@ -18,7 +18,9 @@ resource "aws_s3_bucket" "force_and_lock_logs" {
 #---------------------------------#
 
 resource "aws_s3_bucket_public_access_block" "force_and_lock_logs" {
-  bucket = aws_s3_bucket.force_and_lock_logs.id
+  for_each = aws_s3_bucket.force_and_lock_logs
+
+  bucket = each.value.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -33,7 +35,9 @@ resource "aws_s3_bucket_public_access_block" "force_and_lock_logs" {
 
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_logs" {
-  bucket = aws_s3_bucket.force_and_lock_logs.id
+  for_each = aws_s3_bucket.force_and_lock_logs
+
+  bucket = each.value.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -48,7 +52,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_lo
 #--------------------------------#
 
 resource "aws_s3_bucket_policy" "force_and_lock_logs" {
-  bucket = aws_s3_bucket.force_and_lock_logs.id
+  for_each = aws_s3_bucket.force_and_lock_logs
+
+  bucket = each.value.id
 
   policy = jsonencode({
     Version = "2012-10-17"
