@@ -52,11 +52,33 @@ jobs:
           echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
 
       # ───────────────────────────────────────
-      # Step 4: Upload Lambda .Zip Files 
+      # Step 4: Upload Lambda .Zip Files to all regional buckets dynamically
       # ───────────────────────────────────────
-      - name: Upload lambda code
+      - name: Upload lambda code to all buckets dynamically
         run: |
-          aws s3 cp lambda_code/ s3://$BUCKET_NAME/lambda_code/ --recursive --exclude "*" --include "*.zip" --region $AWS_REGION
+          # Extraer bucket_name y organization del tfvars
+          BUCKET_PREFIX=$(grep '^bucket_name' terraform/s3_kms/variables.tfvars | cut -d '"' -f2)
+          ORG=$(grep '^organization' terraform/s3_kms/variables.tfvars | cut -d '"' -f2)
+
+          # Extraer deployment_regions como string y convertirlo en array bash
+          # Ejemplo esperado: deployment_regions = ["us-east-1", "sa-east-1"]
+          REGIONS_STR=$(grep '^deployment_regions' terraform/s3_kms/variables.tfvars | sed 's/deployment_regions\s*=\s*\[\(.*\)\]/\1/' | tr -d '"')
+
+          # Quitar espacios y dividir en array
+          IFS=',' read -ra REGIONS <<< "$REGIONS_STR"
+
+          echo "Bucket prefix: $BUCKET_PREFIX"
+          echo "Organization: $ORG"
+          echo "Regions: ${REGIONS[@]}"
+
+          for region in "${REGIONS[@]}"; do
+            # Trim espacios
+            region=$(echo "$region" | xargs)
+            BUCKET_NAME="${BUCKET_PREFIX}-${region}-${ORG}"
+            echo "Uploading to bucket: $BUCKET_NAME in region $region"
+            aws s3 cp lambda_code/ s3://$BUCKET_NAME/lambda_code/ --recursive --exclude "*" --include "*.zip" --region $region
+          done
+
 
       # ────────────────────────────────────────────────────────────────
       # Step 5: Terraform Apply CloudFormation Global (IAM + StackSet)
