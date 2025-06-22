@@ -77,14 +77,14 @@ resource "aws_iam_role_policy" "AWSCloudFormationStackSetAdministrationRole_Exec
 #----------------------------------------------------------#
 
 resource "aws_cloudformation_stack_set_instance" "regional_resources_fall_org" {
-  for_each        = toset(var.deployment_regions)
+  for_each       = toset(var.deployment_regions)
   stack_set_name = aws_cloudformation_stack_set.force_and_lock_logs.name
 
   deployment_targets {
     organizational_unit_ids = ["${var.target_id}"]
   }
 
-  stack_set_instance_region  = each.key
+  stack_set_instance_region = each.key
 
 }
 
@@ -93,8 +93,8 @@ resource "aws_cloudformation_stack_set_instance" "regional_resources_fall_org" {
 #-----------------------------------------------------------------------------#
 
 resource "aws_cloudformation_stack" "regional_resources_fall_root_org" {
-  provider = aws.virginia
-  name = "regional-resources-${var.cf_stackset_name}"
+  provider     = aws.virginia
+  name         = "regional-resources-${var.cf_stackset_name}"
   capabilities = ["CAPABILITY_NAMED_IAM"]
 
   template_body = data.local_file.stackset_template.content

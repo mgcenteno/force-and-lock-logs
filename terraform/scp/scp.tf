@@ -8,8 +8,8 @@ resource "aws_organizations_policy" "scp_policy_fall" {
   description = var.scp_description
 
   content = templatefile("${path.module}/../../policies/scp-protect-fall-resources.tpl", {
-  org_id = data.aws_organizations_organization.organization.id
-})
+    org_id = data.aws_organizations_organization.organization.id
+  })
 
 
   tags = var.tags

@@ -1,3 +1,10 @@
+locals {
+  region_provider_map = {
+    "us-east-1" = aws.virginia
+    "sa-east-1" = aws.sao_paulo
+  }
+}
+
 #--------------------------------------------------------------------#
 # This S3 Bucket will be used to store Lambda Function package files #
 #--------------------------------------------------------------------#
@@ -5,11 +12,11 @@
 
 resource "aws_s3_bucket" "force_and_lock_logs" {
   for_each = toset(var.deployment_regions)
-  bucket = "${var.bucket_name}-${each.key}-${var.organization}"
+  bucket   = "${var.bucket_name}-${each.key}-${var.organization}"
 
   tags = var.tags
 
-  #provider = aws.each.key
+  provider = local.region_provider_map[each.key]
 }
 
 
@@ -26,6 +33,8 @@ resource "aws_s3_bucket_public_access_block" "force_and_lock_logs" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+
+  provider = local.region_provider_map[each.key]
 }
 
 
@@ -45,6 +54,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_lo
       sse_algorithm     = "aws:kms"
     }
   }
+
+  provider = local.region_provider_map[each.key]
 }
 
 #--------------------------------#
@@ -55,6 +66,8 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
   for_each = aws_s3_bucket.force_and_lock_logs
 
   bucket = each.value.id
+
+  provider = local.region_provider_map[each.key]
 
   policy = jsonencode({
     Version = "2012-10-17"

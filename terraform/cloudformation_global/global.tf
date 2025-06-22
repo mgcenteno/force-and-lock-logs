@@ -92,8 +92,8 @@ resource "aws_cloudformation_stack_set_instance" "global_resources_fall_org" {
 #-------------------------------------------------------#
 
 resource "aws_cloudformation_stack" "global_resources_fall_root_org" {
-  provider = aws.virginia
-  name = "global-resources-${var.cf_stackset_name}"
+  provider     = aws.virginia
+  name         = "global-resources-${var.cf_stackset_name}"
   capabilities = ["CAPABILITY_NAMED_IAM"]
 
   template_body = data.local_file.stackset_template.content
