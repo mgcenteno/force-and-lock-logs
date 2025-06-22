@@ -1,24 +1,16 @@
-locals {
-  region_provider_map = {
-    "us-east-1" = aws.virginia
-    "sa-east-1" = aws.sao_paulo
-  }
-}
-
 #--------------------------------------------------------------------#
 # This S3 Bucket will be used to store Lambda Function package files #
 #--------------------------------------------------------------------#
-
 
 resource "aws_s3_bucket" "force_and_lock_logs" {
   for_each = toset(var.deployment_regions)
   bucket   = "${var.bucket_name}-${each.key}-${var.organization}"
 
-  tags = var.tags
+  tags     = var.tags
 
-  provider = local.region_provider_map[each.key]
+  provider = each.key == "us-east-1" ? aws.virginia :
+             each.key == "sa-east-1" ? aws.sao_paulo : aws
 }
-
 
 #---------------------------------#
 # Enabling S3 Block Public Access #
@@ -34,14 +26,13 @@ resource "aws_s3_bucket_public_access_block" "force_and_lock_logs" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 
-  provider = local.region_provider_map[each.key]
+  provider = each.key == "us-east-1" ? aws.virginia :
+             each.key == "sa-east-1" ? aws.sao_paulo : aws
 }
-
 
 #-----------------------------#
 # Enabling Encryption at-rest #
 #-----------------------------#
-
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_logs" {
   for_each = aws_s3_bucket.force_and_lock_logs
@@ -55,7 +46,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_lo
     }
   }
 
-  provider = local.region_provider_map[each.key]
+  provider = each.key == "us-east-1" ? aws.virginia :
+             each.key == "sa-east-1" ? aws.sao_paulo : aws
 }
 
 #--------------------------------#
@@ -67,17 +59,15 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
 
   bucket = each.value.id
 
-  provider = local.region_provider_map[each.key]
-
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Sid       = "DenyUnencryptedRequests"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = ["s3:PutObject"]
-        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
+        Sid       = "DenyUnencryptedRequests",
+        Effect    = "Deny",
+        Principal = "*",
+        Action    = ["s3:PutObject"],
+        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*",
         Condition = {
           Bool = {
             "aws:SecureTransport" = "false"
@@ -85,13 +75,13 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
         }
       },
       {
-        Sid    = "AllowLambdaCloudFormationAccess"
-        Effect = "Allow"
+        Sid    = "AllowLambdaCloudFormationAccess",
+        Effect = "Allow",
         Principal = {
           Service = ["lambda.amazonaws.com", "cloudformation.amazonaws.com"]
-        }
-        Action   = ["s3:GetObject", "s3:GetObjectVersion"]
-        Resource = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
+        },
+        Action   = ["s3:GetObject", "s3:GetObjectVersion"],
+        Resource = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*",
         Condition = {
           StringEquals = {
             "aws:SourceOrgID" = "${data.aws_organizations_organization.organization.id}"
@@ -99,15 +89,15 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
         }
       },
       {
-        Sid       = "AllowLambdaExecutionRoleWithConditions"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = ["s3:GetObject", "s3:GetObjectVersion"]
-        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
+        Sid       = "AllowLambdaExecutionRoleWithConditions",
+        Effect    = "Allow",
+        Principal = "*",
+        Action    = ["s3:GetObject", "s3:GetObjectVersion"],
+        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*",
         Condition = {
           StringEquals = {
             "aws:PrincipalOrgID" = "${data.aws_organizations_organization.organization.id}"
-          }
+          },
           "ArnLike" = {
             "aws:PrincipalArn" = "arn:aws:iam::*:role/stacksets-exec-*"
           }
@@ -115,4 +105,7 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
       }
     ]
   })
+
+  provider = each.key == "us-east-1" ? aws.virginia :
+             each.key == "sa-east-1" ? aws.sao_paulo : aws
 }

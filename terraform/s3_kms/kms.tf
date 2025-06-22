@@ -4,7 +4,8 @@
 
 resource "aws_kms_key" "force_and_lock_logs" {
   for_each                = toset(var.deployment_regions)
-  provider                = local.region_provider_map[each.key]
+  provider                = each.key == "us-east-1" ? aws.virginia :
+                            each.key == "sa-east-1" ? aws.sao_paulo : aws
   description             = var.kms_description
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = var.kms_key_rotation
@@ -68,5 +69,6 @@ resource "aws_kms_alias" "force_and_lock_logs" {
   name          = "alias/kmskey-force-and-lock-logs-${each.key}-${var.organization}"
   target_key_id = aws_kms_key.force_and_lock_logs[each.key].id
 
-  provider = local.region_provider_map[each.key]
+  provider = each.key == "us-east-1" ? aws.virginia :
+             each.key == "sa-east-1" ? aws.sao_paulo : aws
 }
