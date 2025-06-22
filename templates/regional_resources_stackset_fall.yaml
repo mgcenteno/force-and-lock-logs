@@ -1,0 +1,478 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation Stack used to deploy FALL (Force and Lock Logs) regional resources, this means Lambda, Event-Bridge, and other resources that supports Multi-Region Deployment of FALL"
+
+Parameters:
+  Organization:
+    Description: AWS Organization Name used as part of the Bucket Name where Lambda get the .Zip files
+    Type: String
+    Default: test
+
+  Webhook:
+    Description: Webhook where the FALL Notifications will be send it
+    Type: String
+    Default: "https://chat.googleapis.com/v1/spaces/AAQA9sR9Mv8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=1kzLmd0wKb7yH2_ixh8p6uEqHXRvu63PcfqHTByIJfw"
+
+  LogGroupPrefix:
+    Description: Prefix Name which will be part of the CloudWatch Log Group name to store VPC Flow Logs
+    Type: String
+    Default: "/vpc-flow-logs/"
+
+  RetentionDays:
+    Description: Prefix Name which will be part of the CloudWatch Log Group name to store VPC Flow Logs
+    Type: Number
+    Default: 30
+
+  MemorySize:
+    Description: RAM used by Lambda Functions
+    Type: Number
+    Default: 256
+
+  Timeout:
+    Description: Lambda Function Execution Time
+    Type: Number
+    Default: 30
+
+  TransitionInDays:
+    Description: This value is used in the Amazon S3 Lifecycle Rule to move the log files to another S3 Storage Class
+    Type: Number
+    Default: 90
+
+  StorageClass:
+    Description: Amazon S3 Storage Class where the log files will be moved after the TransitionInDays value
+    Type: String
+    Default: "DEEP_ARCHIVE"
+
+  ExpirationInDays:
+    Description: This value defines when the S3 Objects Log Files will be deleted in the Logging S3 Bucket
+    Type: Number
+    Default: 365
+
+
+Resources:
+
+#---------------------------------------------------------------------#
+# Here we create all resources related with VPC Flow Logs remediation #
+#---------------------------------------------------------------------#
+
+  FunctionEnableVPCFlowLogs:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lambfun-fall-enable-vpc-flow-logs
+      Description: Lambda Function used to enable VPC Flow Logs in a new Amazon VPC created.
+      Runtime: python3.13
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-vpc-flow-logs
+      Handler: enablevpcflowlogs.lambda_handler
+      Code:
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Key: lambda_code/enablevpcflowlogs.zip
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref Timeout
+      LoggingConfig:
+        ApplicationLogLevel: DEBUG
+        LogGroup: cwlog-lambfun-fall-enable-vpc-flow-logs
+        SystemLogLevel: DEBUG
+        LogFormat: JSON
+      Environment:
+        Variables:
+          FLOW_LOG_ROLE_ARN: 
+            "Fn::GetAtt": [
+                "RolePublishVPCFlowLogs",
+                "Arn"
+            ]
+          KMS_KEY_ARN: 
+            "Fn::GetAtt": [
+                "KMSVPCFlowLogs",
+                "Arn"
+            ]
+          LOG_GROUP_PREFIX: !Ref LogGroupPrefix
+          RETENTION_DAYS: !Ref RetentionDays
+          WEBHOOK_GOOGLE_CHAT: !Ref Webhook
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  EventBridgeCreateVPC:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: eventrule-fall-new-vpc-created
+      Description: Amazon EventBridge Rule used to invoke Lambda Function when a new VPC is created
+      EventBusName: default
+      State: ENABLED
+      EventPattern: 
+        source: 
+          - aws.ec2
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource: 
+            - ec2.amazonaws.com
+          eventName: 
+            - CreateVpc
+      Targets:
+        - Id: InvokeLambdaFunctionEnableVPCFlowLogs
+          Arn: !GetAtt FunctionEnableVPCFlowLogs.Arn
+  PermissionForEventsToInvokeVpcLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FunctionEnableVPCFlowLogs
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventBridgeCreateVPC.Arn
+  KMSVPCFlowLogs:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An symmetric encryption KMS key used to encrypt VPC Flow Logs stored in CloudWatch Log Group
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow VPC Flow Logs and Lambda to use the key
+            Effect: Allow
+            Principal:
+              Service: ['lambda.amazonaws.com', 'vpc-flow-logs.amazonaws.com', 'logs.amazonaws.com']
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+  KMSVPCFlowLogsAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: alias/kmskey-fall-cwlog-vpc-flow-logs
+      TargetKeyId: !Ref KMSVPCFlowLogs
+
+#-----------------------------------------------------------------------------------------#
+# Here we create all resources related with Elastic Load Balancer Access Logs remediation #
+#-----------------------------------------------------------------------------------------#
+
+  FunctionEnableELBAccessLogs:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lambfun-fall-enable-elb-access-logs
+      Description: Lambda Function used to enable Application and Network Load Balancers Access Logs when a new ALB is created.
+      Runtime: python3.13
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-elb-access-logs
+      Handler: enableelbaccesslogs.lambda_handler
+      Code:
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Key: lambda_code/enableelbaccesslogs.zip
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref Timeout
+      LoggingConfig:
+        ApplicationLogLevel: DEBUG
+        LogGroup: cwlog-lambfun-fall-enable-elb-access-logs
+        SystemLogLevel: DEBUG
+        LogFormat: JSON
+      Environment:
+        Variables:
+          KMS_KEY_ARN: 
+            "Fn::GetAtt": [
+                "KMSEnableELBLogs",
+                "Arn"
+            ]
+          TRANSITION_IN_DAYS: !Ref TransitionInDays
+          STORAGE_CLASS: !Ref StorageClass
+          EXPIRATION_IN_DAYS: !Ref ExpirationInDays
+          WEBHOOK_GOOGLE_CHAT: !Ref Webhook
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  EventBridgeCreateELB:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: eventrule-fall-new-elb-created
+      Description: Amazon EventBridge Rule used to invoke Lambda Function when a new ELB is created
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.elasticloadbalancing
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - elasticloadbalancing.amazonaws.com
+          eventName:
+            - CreateLoadBalancer
+      Targets:
+        - Id: InvokeLambdaFunctionEnableELBAccessLogs
+          Arn: !GetAtt FunctionEnableELBAccessLogs.Arn
+  PermissionForEventsToInvokeFunctionEnableELBAccessLogs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FunctionEnableELBAccessLogs
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventBridgeCreateELB.Arn
+  KMSEnableELBLogs:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An symmetric encryption KMS key used to encrypt Network Load Balancer Access Logs stored in Amazon S3
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Log Delivery Group and Lambda to use the key
+            Effect: Allow
+            Principal:
+              Service: ['lambda.amazonaws.com', 'delivery.logs.amazonaws.com']
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+  KMSEnableELBLogsAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: alias/kmskey-fall-s3-elb-logs
+      TargetKeyId: !Ref KMSEnableELBLogs
+
+
+#-------------------------------------------------------------------------------------------#
+# Here we create all resources related with CloudFront Distribution Access Logs remediation #
+#-------------------------------------------------------------------------------------------#
+
+  FunctionEnableCloudFrontAccessLogs:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lambfun-fall-enable-cloudfront-access-logs
+      Description: Lambda Function used to enable Amazon CloudFront Access Logs when a new CloudFront Distribution is created.
+      Runtime: python3.13
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-cloudfront-access-logs
+      Handler: enablecloudfrontstandardlogsv2.lambda_handler
+      Code:
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Key: lambda_code/enablecloudfrontstandardlogsv2.zip
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref Timeout
+      LoggingConfig:
+        ApplicationLogLevel: DEBUG
+        LogGroup: cwlog-lambfun-fall-enable-cloudfront-access-logs
+        SystemLogLevel: DEBUG
+        LogFormat: JSON
+      Environment:
+        Variables:
+          KMS_KEY_ARN: 
+            "Fn::GetAtt": [
+                "KMSEnableCloudFrontLogs",
+                "Arn"
+            ]
+          TRANSITION_IN_DAYS: !Ref TransitionInDays
+          STORAGE_CLASS: !Ref StorageClass
+          EXPIRATION_IN_DAYS: !Ref ExpirationInDays
+          WEBHOOK_GOOGLE_CHAT: !Ref Webhook
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  EventBridgeCreateDistribution:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: eventrule-fall-new-cloudfront-distribution-created
+      Description: Amazon EventBridge Rule used to invoke Lambda Function when a new CloudFront Distribution is created
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.cloudfront
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - cloudfront.amazonaws.com
+          eventName:
+            - CreateDistributionWithTags
+      Targets:
+        - Id: InvokeLambdaFunctionEnableCloudFrontAccessLogs
+          Arn: !GetAtt FunctionEnableCloudFrontAccessLogs.Arn
+  PermissionForEventsToInvokeFunctionEnableCloudFrontAccessLogs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FunctionEnableCloudFrontAccessLogs
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventBridgeCreateDistribution.Arn
+  KMSEnableCloudFrontLogs:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An symmetric encryption KMS key used to encrypt Amazon CloudFront Standard Logs v2 stored in Amazon S3
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Log Delivery Group and Lambda to use the key
+            Effect: Allow
+            Principal:
+              Service: ['lambda.amazonaws.com', 'delivery.logs.amazonaws.com']
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+          - Sid: Allow Lambda Execution Role to use the key
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt RoleEnableCloudFrontAccessLogs.Arn
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+  KMSEnableCloudFrontLogsAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: alias/kmskey-fall-cloudfront-standard-logs
+      TargetKeyId: !Ref KMSEnableCloudFrontLogs
+
+#-----------------------------------------------------------------------------#
+# Here we create all resources related with S3 Bucket Access Logs remediation #
+#-----------------------------------------------------------------------------#
+
+  FunctionEnableS3AccessLogging:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lambfun-fall-enable-s3-access-logging
+      Description: Lambda Function used to enable S3 Access Logs when a new Amazon S3 Bucket is created.
+      Runtime: python3.13
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-s3-access-logging
+      Handler: enables3accesslogging.lambda_handler
+      Code:
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Key: lambda_code/enables3accesslogging.zip
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref Timeout
+      LoggingConfig:
+        ApplicationLogLevel: DEBUG
+        LogGroup: cwlog-lambfun-fall-enable-s3-access-logging
+        SystemLogLevel: DEBUG
+        LogFormat: JSON
+      Environment:
+        Variables:
+          KMS_KEY_ARN: 
+            "Fn::GetAtt": [
+                "KMSS3AccessLogging",
+                "Arn"
+            ]
+          DEPLOYMENT_REGION: 
+            !Ref 'AWS::Region'
+          TRANSITION_IN_DAYS: !Ref TransitionInDays
+          STORAGE_CLASS: !Ref StorageClass
+          EXPIRATION_IN_DAYS: !Ref ExpirationInDays
+          WEBHOOK_GOOGLE_CHAT: !Ref Webhook
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  EventBridgeCreateBucket:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: eventrule-fall-new-s3-bucket-created
+      Description: Amazon EventBridge Rule used to invoke Lambda Function when a new S3 Bucket is created.
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CreateBucket
+      Targets:
+        - Id: InvokeLambdaFunctionEnableS3AccessLogging
+          Arn: !GetAtt FunctionEnableS3AccessLogging.Arn
+  PermissionForEventsToInvokeFunctionEnableS3AccessLogging:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FunctionEnableS3AccessLogging
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventBridgeCreateBucket.Arn
+  KMSS3AccessLogging:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An symmetric encryption KMS key used to encrypt S3 Access Logging within an S3 Bucket
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Amazon S3 Log Delivery Group to use the key
+            Effect: Allow
+            Principal:
+              Service: ['logging.s3.amazonaws.com']
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: '*'
+  KMSS3AccessLogsAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: alias/kmskey-fall-cwlog-s3-access-logging
+      TargetKeyId: !Ref KMSS3AccessLogging

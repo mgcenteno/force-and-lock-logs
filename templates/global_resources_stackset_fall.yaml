@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation Stack used to deploy FALL (Force and Lock Logs) global resources, this means IAM resources that only lives within US-EAST-1, this is useful to avoid errors in a Multi-Region Deployment of FALL"
+
+
+Resources:
+
+#-----------------------------------------------#
+# IAM Role and Policies to enable VPC Flow Logs #
+#-----------------------------------------------#
+
+  RoleEnableVPCFlowLogs:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: iamrole-fall-enable-vpc-flow-logs
+      Description: IAM Role used by the Lambda to enable VPC Flow Logs
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref CustomManagedPolicyEnableVPCFlowLogs
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+
+  CustomManagedPolicyEnableVPCFlowLogs:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: iamplcy-fall-enable-vpc-flow-logs
+      Description: Policy allowing Lambda to enable VPC Flow Logs
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:PutRetentionPolicy
+              - logs:AssociateKmsKey
+              - ec2:CreateFlowLogs
+              - ec2:DescribeTags
+              - ec2:DescribeVpcs
+              - ec2:DescribeFlowLogs
+              - ec2:DescribeSubnets
+              - iam:PassRole
+            Resource: "*"
+  RolePublishVPCFlowLogs:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "iamrole-fall-publish-vpc-flow-logs"
+      Description: "IAM Role used to grant VPC Flow Logs Access to publish CloudWatch Log Groups"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - vpc-flow-logs.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+  PolicyPublishVPCFlowLogs:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: iamplcy-fall-publish-vpc-flow-logs
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "logs:DescribeLogGroups"
+              - "logs:DescribeLogStreams"
+            Resource: '*'
+      Roles:
+        - !Ref RolePublishVPCFlowLogs
+
+#---------------------------------------------------------------------------------------#
+# IAM Role and Policies to enable Access Logs for Application and Network Load Balancer #
+#---------------------------------------------------------------------------------------#
+
+  RoleEnableELBAccessLogs:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "iamrole-fall-enable-elb-access-logs"
+      Description: "IAM Role used to grant Lambda Function access to S3 Bucket used to store .zip files"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  CustomManagedPolicyEnableELBAccessLogs:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: iamplcy-fall-enable-elb-access-logs
+      Description: Policy allowing Lambda to enable Application and Network Load Balancer Access Logs
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+              - s3:DeleteBucketPolicy
+              - s3:PutBucketVersioning
+              - s3:GetEncryptionConfiguration
+              - s3:PutEncryptionConfiguration
+              - s3:PutLifecycleConfiguration
+              - s3:GetBucketLogging
+              - s3:PutBucketLogging
+              - s3:GetBucketTagging
+              - s3:CreateBucket
+              - sts:GetCallerIdentity
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
+              - elasticloadbalancing:DescribeLoadBalancerAttributes
+              - elasticloadbalancing:DescribeTags
+            Resource: "*"
+      Roles:
+        - !Ref RoleEnableELBAccessLogs
+
+
+#-------------------------------------------------------------#
+# IAM Role and Policies to enable CloudFront Standard Logs v2 #
+#-------------------------------------------------------------#
+
+  RoleEnableCloudFrontAccessLogs:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "iamrole-fall-enable-cloudfront-access-logs"
+      Description: "IAM Role used to grant Lambda Function access to S3 Bucket used to store .zip files"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  CustomManagedPolicyRoleEnableCloudFrontLogs:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: iamplcy-fall-enable-cloudfront-standard-logs
+      Description: Policy allowing Lambda to enable Amazon CloudFront Standard Logs v2
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+              - s3:PutBucketPublicAccessBlock
+              - s3:DeleteBucketPolicy
+              - s3:PutBucketVersioning
+              - s3:GetEncryptionConfiguration
+              - s3:PutEncryptionConfiguration
+              - s3:PutLifecycleConfiguration
+              - s3:GetBucketLogging
+              - s3:PutBucketLogging
+              - s3:GetBucketTagging
+              - s3:CreateBucket
+              - s3:GetBucketLocation
+              - s3:GetBucketAcl
+              - s3:PutBucketAcl
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - cloudfront:GetDistribution
+              - cloudfront:GetDistributionConfig
+              - cloudfront:UpdateDistribution
+              - cloudfront:AllowVendedLogDeliveryForResource
+              - cloudfront:ListTagsForResource
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - logs:PutDeliveryDestination
+              - logs:PutDeliverySource
+              - logs:GetDelivery
+              - logs:CreateDelivery
+              - sts:GetCallerIdentity
+            Resource: "*"
+      Roles:
+        - !Ref RoleEnableCloudFrontAccessLogs
+
+#----------------------------------------------------#
+# IAM Role and Policies to enable Server Access Logs #
+#----------------------------------------------------#
+
+  RoleEnableS3AccessLogging:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "iamrole-fall-enable-s3-access-logging"
+      Description: "IAM Role used to grant Lambda Function access to S3 Bucket used to store .zip files"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: CloudSecurity
+        - Key: Product
+          Value: Force and Lock Logs
+  CustomManagedPolicyEnableS3AccessLogs:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: iamplcy-fall-enable-s3-access-logging
+      Description: Policy allowing Lambda to enable Amazon S3 Access Logging
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+              - s3:DeleteBucketPolicy
+              - s3:PutBucketVersioning
+              - s3:GetEncryptionConfiguration
+              - s3:PutEncryptionConfiguration
+              - s3:PutLifecycleConfiguration
+              - s3:GetBucketLogging
+              - s3:PutBucketLogging
+              - s3:GetBucketTagging
+              - s3:CreateBucket
+              - sts:GetCallerIdentity
+            Resource: "*"
+      Roles:
+        - !Ref RoleEnableS3AccessLogging

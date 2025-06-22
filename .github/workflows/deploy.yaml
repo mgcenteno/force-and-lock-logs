@@ -1,0 +1,91 @@
+name: Full Terraform Deployment (S3+KMS → Upload → CloudFormation)
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::XXXXXXXXXXXX:role/iamrole-oidc-github-fall
+          aws-region: ${{ env.AWS_REGION }}
+      
+      # ──────────────────────────────────
+      # Step 1: Install Terraform 
+      # ──────────────────────────────────
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # ────────────────────────────────────────────────────────────
+      # Step 2: Terraform Apply Amazon S3 and AWS KMS Module  
+      # ────────────────────────────────────────────────────────────
+      - name: Init S3 + KMS
+        run: terraform -chdir=terraform/s3_kms init
+
+      - name: Apply S3 + KMS
+        run: terraform -chdir=terraform/s3_kms apply -var-file="variables.tfvars" --auto-approve
+
+      # ─────────────────────────────────────────────────────────────
+      # Step 3: Extract Bucket Name using variables.tfvars 
+      # ─────────────────────────────────────────────────────────────
+      - name: Get bucket name from tfvars
+        run: |
+          ORG=$(grep '^organization' terraform/s3_kms/variables.tfvars | cut -d '"' -f2)
+          PREFIX=$(grep '^bucket_name' terraform/s3_kms/variables.tfvars | cut -d '"' -f2)
+          BUCKET_NAME="${PREFIX}${ORG}"
+          echo "✅ Bucket: $BUCKET_NAME"
+          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+
+      # ───────────────────────────────────────
+      # Step 4: Upload Lambda .Zip Files 
+      # ───────────────────────────────────────
+      - name: Upload lambda code
+        run: |
+          aws s3 cp lambda_code/ s3://$BUCKET_NAME/lambda_code/ --recursive --exclude "*" --include "*.zip" --region $AWS_REGION
+
+      # ────────────────────────────────────────────────────────────────
+      # Step 5: Terraform Apply CloudFormation Global (IAM + StackSet)
+      # ────────────────────────────────────────────────────────────────
+      - name: Init CloudFormation Global Module
+        run: terraform -chdir=terraform/cloudformation_global init
+
+      - name: Apply CloudFormation Global Module
+        run: terraform -chdir=terraform/cloudformation_global apply -var-file="variables.tfvars" --auto-approve
+
+      - name: Sleep before regional deployment
+        run: sleep 30
+
+      # ────────────────────────────────────────────────────────────────
+      # Step 6: Terraform Apply CloudFormation Regional (Lambdas, etc.)
+      # ────────────────────────────────────────────────────────────────
+      - name: Init CloudFormation Regional Module
+        run: terraform -chdir=terraform/cloudformation_regional init
+
+      - name: Apply CloudFormation Regional Module
+        run: terraform -chdir=terraform/cloudformation_regional apply -var-file="variables.tfvars" --auto-approve
+
+
+      # ───────────────────────────────────────────────────────────────
+      # Step 7: Enable Termination Protection on CloudFormation Stack
+      # ───────────────────────────────────────────────────────────────
+
+      #- name: Enable CloudFormation Termination Protection
+      # run: |
+      #    aws cloudformation update-termination-protection \
+      #      --stack-name "StacksetForceAndLockLogs" \
+      #      --enable-termination-protection
