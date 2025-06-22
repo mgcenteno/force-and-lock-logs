@@ -13,11 +13,6 @@ variable "max_concurrent_count" {
   type        = number
 }
 
-variable "region_order" {
-  description = "(Optional) The order of the Regions in where you want to perform the stack operation"
-  type        = list(string)
-}
-
 variable "target_id" {
   description = "Where to deploy the StackInstance"
   type        = string
