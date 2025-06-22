@@ -4,7 +4,7 @@
 
 resource "aws_s3_bucket" "force_and_lock_logs_primary" {
   provider = aws.primary
-  bucket   = "${var.bucket_name}-${data.aws_region.current.name}-${var.organization}"
+  bucket   = "${var.bucket_name}-${data.aws_region.primary.name}-${var.organization}"
 
   tags     = var.tags
 }
@@ -105,7 +105,7 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs_primary" {
 
 resource "aws_s3_bucket" "force_and_lock_logs_secondary" {
   provider = aws.secondary
-  bucket   = "${var.bucket_name}-${data.aws_region.current.name}-${var.organization}"
+  bucket   = "${var.bucket_name}-${data.aws_region.secondary.name}-${var.organization}"
 
   tags     = var.tags
 }
