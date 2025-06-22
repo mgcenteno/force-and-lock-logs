@@ -74,11 +74,7 @@ Resources:
         LogFormat: JSON
       Environment:
         Variables:
-          FLOW_LOG_ROLE_ARN: 
-            "Fn::GetAtt": [
-                "RolePublishVPCFlowLogs",
-                "Arn"
-            ]
+          FLOW_LOG_ROLE_ARN: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-publish-vpc-flow-logs
           KMS_KEY_ARN: 
             "Fn::GetAtt": [
                 "KMSVPCFlowLogs",
