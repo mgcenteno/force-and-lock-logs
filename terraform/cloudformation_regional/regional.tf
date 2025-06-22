@@ -62,7 +62,7 @@ data "aws_iam_policy_document" "AWSCloudFormationStackSetAdministrationRole_Exec
   statement {
     actions   = ["sts:AssumeRole"]
     effect    = "Allow"
-    resources = [data.aws_iam_role.AWSCloudFormationStackSetAdministrationRole.name]
+    resources = [data.aws_iam_role.AWSCloudFormationStackSetAdministrationRole.arn]
   }
 }
 
