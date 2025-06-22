@@ -64,7 +64,7 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
         Effect    = "Deny"
         Principal = "*"
         Action    = ["s3:PutObject"]
-        Resource  = "${aws_s3_bucket.force_and_lock_logs.arn}/*"
+        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
         Condition = {
           Bool = {
             "aws:SecureTransport" = "false"
@@ -78,7 +78,7 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
           Service = ["lambda.amazonaws.com", "cloudformation.amazonaws.com"]
         }
         Action   = ["s3:GetObject", "s3:GetObjectVersion"]
-        Resource = "${aws_s3_bucket.force_and_lock_logs.arn}/*"
+        Resource = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
         Condition = {
           StringEquals = {
             "aws:SourceOrgID" = "${data.aws_organizations_organization.organization.id}"
@@ -90,7 +90,7 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
         Effect    = "Allow"
         Principal = "*"
         Action    = ["s3:GetObject", "s3:GetObjectVersion"]
-        Resource  = "${aws_s3_bucket.force_and_lock_logs.arn}/*"
+        Resource  = "${aws_s3_bucket.force_and_lock_logs[each.key].arn}/*"
         Condition = {
           StringEquals = {
             "aws:PrincipalOrgID" = "${data.aws_organizations_organization.organization.id}"
