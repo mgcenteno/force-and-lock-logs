@@ -67,9 +67,6 @@ jobs:
       - name: Apply CloudFormation Global Module
         run: terraform -chdir=terraform/cloudformation_global apply -var-file="variables.tfvars" --auto-approve
 
-      - name: Sleep before regional deployment
-        run: sleep 30
-
       # ────────────────────────────────────────────────────────────────
       # Step 6: Terraform Apply CloudFormation Regional (Lambdas, etc.)
       # ────────────────────────────────────────────────────────────────
