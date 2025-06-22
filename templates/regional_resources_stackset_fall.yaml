@@ -354,7 +354,7 @@ Resources:
           - Sid: Allow Lambda Execution Role to use the key
             Effect: Allow
             Principal:
-              AWS: !GetAtt RoleEnableCloudFrontAccessLogs.Arn
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-cloudfront-access-logs
             Action:
               - "kms:DescribeKey"
               - "kms:Encrypt"
