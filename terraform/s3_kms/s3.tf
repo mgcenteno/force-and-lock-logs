@@ -8,8 +8,7 @@ resource "aws_s3_bucket" "force_and_lock_logs" {
 
   tags     = var.tags
 
-  provider = each.key == "us-east-1" ? aws.virginia :
-             each.key == "sa-east-1" ? aws.sao_paulo : aws
+  provider = local.region_provider_map[each.key]
 }
 
 #---------------------------------#
@@ -26,8 +25,7 @@ resource "aws_s3_bucket_public_access_block" "force_and_lock_logs" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 
-  provider = each.key == "us-east-1" ? aws.virginia :
-             each.key == "sa-east-1" ? aws.sao_paulo : aws
+  provider = local.region_provider_map[each.key]
 }
 
 #-----------------------------#
@@ -46,8 +44,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_lo
     }
   }
 
-  provider = each.key == "us-east-1" ? aws.virginia :
-             each.key == "sa-east-1" ? aws.sao_paulo : aws
+  provider = local.region_provider_map[each.key]
 }
 
 #--------------------------------#
@@ -106,6 +103,5 @@ resource "aws_s3_bucket_policy" "force_and_lock_logs" {
     ]
   })
 
-  provider = each.key == "us-east-1" ? aws.virginia :
-             each.key == "sa-east-1" ? aws.sao_paulo : aws
+  provider = local.region_provider_map[each.key]
 }

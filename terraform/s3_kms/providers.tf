@@ -16,3 +16,10 @@ provider "aws" {
   alias  = "sao_paulo"
   region = "sa-east-1"
 }
+
+locals {
+  region_provider_map = {
+    "us-east-1" = aws.virginia
+    "sa-east-1" = aws.sao_paulo
+  }
+}
