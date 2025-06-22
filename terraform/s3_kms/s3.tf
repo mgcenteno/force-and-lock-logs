@@ -4,9 +4,12 @@
 
 
 resource "aws_s3_bucket" "force_and_lock_logs" {
-  bucket = "${var.bucket_name}${var.organization}"
+  for_each = toset(var.deployment_regions)
+  bucket = "${var.bucket_name}-${data.aws_region.current.name}-${var.organization}"
 
   tags = var.tags
+
+  #provider = aws.each.key
 }
 
 

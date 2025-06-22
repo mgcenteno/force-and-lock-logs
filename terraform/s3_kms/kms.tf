@@ -3,6 +3,7 @@
 #------------------------------------------------------------------#
 
 resource "aws_kms_key" "force_and_lock_logs" {
+  for_each = toset(var.deployment_regions)
   description             = var.kms_description
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = var.kms_key_rotation
@@ -62,6 +63,6 @@ resource "aws_kms_key" "force_and_lock_logs" {
 }
 
 resource "aws_kms_alias" "force_and_lock_logs" {
-  name          = "alias/kmskey-force-and-lock-logs-${var.organization}"
+  name          = "alias/kmskey-force-and-lock-logs-${data.aws_region.current.name}-${var.organization}"
   target_key_id = aws_kms_key.force_and_lock_logs.id
 }

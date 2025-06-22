@@ -33,6 +33,10 @@ variable "kms_key_rotation" {
   default     = true
 }
 
+variable "deployment_regions" {
+  type = list(string)
+}
+
 #----------------------#
 # Common use variables #
 #----------------------#

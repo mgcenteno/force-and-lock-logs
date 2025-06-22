@@ -24,7 +24,7 @@ data "aws_iam_role" "AWSCloudFormationStackSetAdministrationRole" {
 #--------------------------------------------#
 
 resource "aws_cloudformation_stack_set" "force_and_lock_logs" {
-  name             = "regional-resources-${var.cf_stackset_name}"
+  name             = "Regional-Resources-${var.cf_stackset_name}"
   description      = "CloudFormation Stack used to deploy FALL (Force and Lock Logs) regional resources, this means Lambda, Event-Bridge, and other resources that supports Multi-Region Deployment of FALL"
   permission_model = "SERVICE_MANAGED"
 

@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "AWSCloudFormationStackSetAdministrationRole_Exec
 #--------------------------------------------#
 
 resource "aws_cloudformation_stack_set" "global_resources_fall" {
-  name             = "global-resources-${var.cf_stackset_name}"
+  name             = "Global-Resources-${var.cf_stackset_name}"
   description      = "CloudFormation Stack used to deploy FALL (Force and Lock Logs) global resources, this means IAM resources that only lives within US-EAST-1, this is useful to avoid errors in a Multi-Region Deployment of FALL"
   permission_model = "SERVICE_MANAGED"
 

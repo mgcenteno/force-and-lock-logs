@@ -63,7 +63,7 @@ Resources:
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-vpc-flow-logs
       Handler: enablevpcflowlogs.lambda_handler
       Code:
-        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${AWS::Region}-${Organization}
         S3Key: lambda_code/enablevpcflowlogs.zip
       MemorySize: !Ref MemorySize
       Timeout: !Ref Timeout
@@ -171,7 +171,7 @@ Resources:
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-elb-access-logs
       Handler: enableelbaccesslogs.lambda_handler
       Code:
-        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${AWS::Region}-${Organization}
         S3Key: lambda_code/enableelbaccesslogs.zip
       MemorySize: !Ref MemorySize
       Timeout: !Ref Timeout
@@ -280,7 +280,7 @@ Resources:
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-cloudfront-access-logs
       Handler: enablecloudfrontstandardlogsv2.lambda_handler
       Code:
-        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${AWS::Region}-${Organization}
         S3Key: lambda_code/enablecloudfrontstandardlogsv2.zip
       MemorySize: !Ref MemorySize
       Timeout: !Ref Timeout
@@ -394,7 +394,7 @@ Resources:
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/iamrole-fall-enable-s3-access-logging
       Handler: enables3accesslogging.lambda_handler
       Code:
-        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${Organization}
+        S3Bucket: !Sub s3bkt-force-and-lock-logs-files-${AWS::Region}-${Organization}
         S3Key: lambda_code/enables3accesslogging.zip
       MemorySize: !Ref MemorySize
       Timeout: !Ref Timeout
