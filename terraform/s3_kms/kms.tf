@@ -64,6 +64,6 @@ resource "aws_kms_key" "force_and_lock_logs" {
 
 resource "aws_kms_alias" "force_and_lock_logs" {
   for_each = toset(var.deployment_regions)
-  name          = "alias/kmskey-force-and-lock-logs-${data.aws_region.current.name}-${var.organization}"
+  name          = "alias/kmskey-force-and-lock-logs-${each.key}-${var.organization}"
   target_key_id = aws_kms_key.force_and_lock_logs[each.key].id
 }
