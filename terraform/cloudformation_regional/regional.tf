@@ -14,9 +14,8 @@ data "aws_iam_policy_document" "AWSCloudFormationStackSetAdministrationRole_assu
   }
 }
 
-resource "aws_iam_role" "AWSCloudFormationStackSetAdministrationRole" {
-  assume_role_policy = data.aws_iam_policy_document.AWSCloudFormationStackSetAdministrationRole_assume_role_policy.json
-  name               = "AWSCloudFormationStackSetAdministrationRole"
+data "aws_iam_role" "AWSCloudFormationStackSetAdministrationRole" {
+  name = "AWSCloudFormationStackSetAdministrationRole"
 }
 
 
@@ -63,14 +62,14 @@ data "aws_iam_policy_document" "AWSCloudFormationStackSetAdministrationRole_Exec
   statement {
     actions   = ["sts:AssumeRole"]
     effect    = "Allow"
-    resources = ["arn:aws:iam::*:role/${aws_cloudformation_stack_set.force_and_lock_logs.execution_role_name}"]
+    resources = data.aws_iam_role.AWSCloudFormationStackSetAdministrationRole.name
   }
 }
 
 resource "aws_iam_role_policy" "AWSCloudFormationStackSetAdministrationRole_ExecutionPolicy" {
   name   = "ExecutionPolicy"
   policy = data.aws_iam_policy_document.AWSCloudFormationStackSetAdministrationRole_ExecutionPolicy.json
-  role   = aws_iam_role.AWSCloudFormationStackSetAdministrationRole.name
+  role   = data.aws_iam_role.AWSCloudFormationStackSetAdministrationRole.name
 }
 
 #----------------------------------------------------------#
