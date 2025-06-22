@@ -41,7 +41,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "force_and_lock_lo
 
   rule {
     apply_server_side_encryption_by_default {
-      kms_master_key_id = aws_kms_key.force_and_lock_logs.arn
+      kms_master_key_id = aws_kms_key.force_and_lock_logs[each.key].arn
       sse_algorithm     = "aws:kms"
     }
   }
