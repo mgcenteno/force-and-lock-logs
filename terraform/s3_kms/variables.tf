@@ -34,6 +34,7 @@ variable "kms_key_rotation" {
 }
 
 variable "deployment_regions" {
+  description = "AWS Regions where this resources will be deployed"
   type = list(string)
 }
 

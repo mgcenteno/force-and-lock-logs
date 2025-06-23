@@ -18,7 +18,7 @@ Parameters:
     Default: "/vpc-flow-logs/"
 
   RetentionDays:
-    Description: Prefix Name which will be part of the CloudWatch Log Group name to store VPC Flow Logs
+    Description: Define how much time the logs will be stored in CloudWatch Log Group.
     Type: Number
     Default: 30
 

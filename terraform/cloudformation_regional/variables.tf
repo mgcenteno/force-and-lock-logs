@@ -24,6 +24,7 @@ variable "target_id" {
 }
 
 variable "deployment_regions" {
+  description = "AWS Regions where this resources will be deployed"
   type = list(string)
 }
 
