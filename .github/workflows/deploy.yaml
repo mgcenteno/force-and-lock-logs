@@ -80,14 +80,14 @@ jobs:
           done
 
 
-#      # ────────────────────────────────────────────────────────────────
-#      # Step 5: Terraform Apply CloudFormation Global (IAM + StackSet)
-#      # ────────────────────────────────────────────────────────────────
-#      - name: Init CloudFormation Global Module
-#        run: terraform -chdir=terraform/cloudformation_global init
-#
-#      - name: Apply CloudFormation Global Module
-#        run: terraform -chdir=terraform/cloudformation_global apply -var-file="variables.tfvars" --auto-approve
+      # ────────────────────────────────────────────────────────────────
+      # Step 5: Terraform Apply CloudFormation Global (IAM + StackSet)
+      # ────────────────────────────────────────────────────────────────
+      - name: Init CloudFormation Global Module
+        run: terraform -chdir=terraform/cloudformation_global init
+
+      - name: Apply CloudFormation Global Module
+        run: terraform -chdir=terraform/cloudformation_global apply -var-file="variables.tfvars" --auto-approve
 #
 #      # ────────────────────────────────────────────────────────────────
 #      # Step 6: Terraform Apply CloudFormation Regional (Lambdas, etc.)
