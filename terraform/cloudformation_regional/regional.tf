@@ -92,9 +92,9 @@ resource "aws_cloudformation_stack_set_instance" "regional_resources_fall_org" {
 # Deploy Regional Resources within the root account itself in Primary AWS Region #
 #--------------------------------------------------------------------------------#
 
-resource "aws_cloudformation_stack" "regional_resources_fall_root_org" {
-  provider     = aws.virginia
-  name         = "regional-resources-${var.cf_stackset_name}"
+resource "aws_cloudformation_stack" "regional_resources_fall_root_org_primary" {
+  provider     = aws.primary
+  name         = "regional-resources-${data.aws_region.primary.name}-${var.cf_stackset_name}"
   capabilities = ["CAPABILITY_NAMED_IAM"]
 
   template_body = data.local_file.stackset_template.content
@@ -106,9 +106,9 @@ resource "aws_cloudformation_stack" "regional_resources_fall_root_org" {
 # Deploy Regional Resources within the root account itself in Secondary AWS Region #
 #----------------------------------------------------------------------------------#
 
-resource "aws_cloudformation_stack" "regional_resources_fall_root_org" {
-  provider     = aws.sao_paulo
-  name         = "regional-resources-${var.cf_stackset_name}"
+resource "aws_cloudformation_stack" "regional_resources_fall_root_org_secondary" {
+  provider     = aws.secondary
+  name         = "regional-resources-${data.aws_region.secondary.name}-${var.cf_stackset_name}"
   capabilities = ["CAPABILITY_NAMED_IAM"]
 
   template_body = data.local_file.stackset_template.content
