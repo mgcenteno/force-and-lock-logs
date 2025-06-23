@@ -9,7 +9,7 @@ The rest of this folder contains various architecture and flow diagrams that exp
 # Architecture Diagram
 Below is the solution architecture diagram, showing how the various services and resources are connected to achieve the goal of obtaining logs and, in turn, protecting them from malicious actions that could hinder an investigation or even troubleshooting.
 
-![Architecture Diagram Force and Lock Logs](./images/Force_and_Lock_Logs_AWS.png)
+![Architecture Diagram Force and Lock Logs](./images/how_fall_works.svg)
 
 # Scope:
 
@@ -28,7 +28,7 @@ At the time of writing, Force and Lock Logs covers the following resources/servi
 
 The deployment phase consists of a series of steps that are explained below:
 
-![GitHub repository structure.](./images/Force_and_Lock_Logs_Deployment.png)
+![GitHub repository structure.](./images/fall_deployment.svg)
 
 Infrastructure as Code and automation, the heart of FALL:
 
