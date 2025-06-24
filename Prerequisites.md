@@ -50,8 +50,8 @@ To be able to deploy this solution, you should replace at least, the following v
 * **Webhook**: *Webhook where the FALL Notifications will be send it.*
 * **LogGroupPrefix**: *Prefix Name which will be part of the CloudWatch Log Group name to store VPC Flow Logs (Optionally).*
 * **RetentionDays**: *Define how much time the logs will be stored in CloudWatch Log Group.*
-* **MemorySize**: *RAM Memory used by Lambda Functions.*
-* **Timeout**: *Lambda Function Execution Time.*
+* **MemorySize**: *RAM Memory used by Lambda Functions (Optionally).*
+* **Timeout**: *Lambda Function Execution Time (Optionally).*
 * **TransitionInDays**: *This value is used in the Amazon S3 Lifecycle Rule to move the log files to another S3 Storage Class.*
 * **StorageClass**: *Amazon S3 Storage Class where the log files will be moved after the TransitionInDays value.*
 * **ExpirationInDays**: *This value defines when the S3 Objects Log Files will be deleted in the Logging S3 Bucket.*
