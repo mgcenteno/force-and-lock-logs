@@ -4,6 +4,7 @@ To be able to deploy this solution, you should replace at least, the following v
 
 **Within each Terraform Module:**
 
+* **Define your Backend Configuration**.
 * **Define your Terraform Providers**.
 * **Required tags**: *List of tags that you want to add into Terraform Resources.*
 
