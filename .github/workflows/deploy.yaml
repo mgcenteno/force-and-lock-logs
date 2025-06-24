@@ -98,6 +98,14 @@ jobs:
       - name: Apply CloudFormation Regional Module
         run: terraform -chdir=terraform/cloudformation_regional apply -var-file="variables.tfvars" --auto-approve
 
+      # ──────────────────────────────────────────────────────────
+      # Step 7: Terraform Apply Service Control Policy Module
+      # ──────────────────────────────────────────────────────────
+      - name: Init SCP Module
+        run: terraform -chdir=terraform/scp init
+
+      - name: Apply SCP Module
+        run: terraform -chdir=terraform/scp apply -var-file="variables.tfvars" --auto-approve
 
 #      # ───────────────────────────────────────────────────────────────
 #      # Step 7: Enable Termination Protection on CloudFormation Stack
